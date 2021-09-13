@@ -23,8 +23,6 @@ PlayMode::PlayMode()
 
 	// Read map .txt
 	std::ifstream ifs;
-	char map[31][33] = {{0}};
-
 	ifs.open("assets/mazeDesign.txt");
 	if (!ifs.is_open())
 	{
@@ -35,12 +33,39 @@ PlayMode::PlayMode()
 		int i = 0;
 		while (!ifs.eof())
 		{
-			ifs.getline(map[i], sizeof(map[i]));
-			// std::cout << map[i] << "\n";
+			ifs.getline(mazeCharMap[i], sizeof(mazeCharMap[i]));
 			i += 1;
 		}
 		ifs.close();
 	}
+
+	// Map the read data to uint8_t map for each elements
+	for (uint8_t y = 0; y < 30; y++)
+	{
+		for (uint8_t x = 0; x < 32; x++)
+		{
+			switch (mazeCharMap[y][x])
+			{
+				case 'o':
+					grounds.push_back(std::pair<uint8_t, uint8_t>(x, y));
+					break;
+				case 'i':
+					stones.push_back(std::pair<uint8_t, uint8_t>(x, y));
+					break;
+				case 't':
+					targets.push_back(std::pair<uint8_t, uint8_t>(x, y));
+					break;
+				default :
+				    startPoint = std::pair<uint8_t, uint8_t>(x, y);
+					break;
+			}
+		}
+	}
+
+	// Set up player start point
+	player_at.x = startPoint.first * 8.0f;
+	player_at.y = startPoint.second * 8.0f;
+
 
 	{ //use tiles 0-16 as some weird dot pattern thing:
 		std::array<uint8_t, 8 * 8> distance;
@@ -80,8 +105,52 @@ PlayMode::PlayMode()
 		}
 	}
 
-	//use sprite 32 as a "player":
-	ppu.tile_table[32].bit0 = {
+	//use tile 0 as a "ground":
+	ppu.tile_table[0].bit0 = {
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+	};
+	ppu.tile_table[0].bit1 = {
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+	};
+
+	//use tile 1 as a "stone":
+	ppu.tile_table[1].bit0 = {
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+	};
+	ppu.tile_table[1].bit1 = {
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+	};
+
+	//use tile 2 as a "player":
+	ppu.tile_table[2].bit0 = {
 		0b01111110,
 		0b11111111,
 		0b11111111,
@@ -91,7 +160,7 @@ PlayMode::PlayMode()
 		0b11111111,
 		0b01111110,
 	};
-	ppu.tile_table[32].bit1 = {
+	ppu.tile_table[2].bit1 = {
 		0b00000000,
 		0b00000000,
 		0b00011000,
@@ -101,6 +170,75 @@ PlayMode::PlayMode()
 		0b00000000,
 		0b00000000,
 	};
+
+	//use tile 3 as a "target":
+	ppu.tile_table[3].bit0 = {
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+	};
+	ppu.tile_table[3].bit1 = {
+		0b00000000,
+		0b01000010,
+		0b00100100,
+		0b00100100,
+		0b00111100,
+		0b00100100,
+		0b00100100,
+		0b01000010,
+	};
+
+	//use tile 4 as a "button":
+	ppu.tile_table[4].bit0 = {
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+	};
+	ppu.tile_table[4].bit1 = {
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00111100,
+		0b00111100,
+		0b00111100,
+		0b00000000,
+		0b00000000,
+	};
+
+	//use tile 5 as a "dark":
+	ppu.tile_table[5].bit0 = {
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+		0b11111111,
+	};
+	ppu.tile_table[5].bit1 = {
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+	};
+
+
+
 
 	//makes the outside of tiles 0-16 solid:
 	ppu.palette_table[0] = {
@@ -168,6 +306,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.pressed = true;
 			return true;
 		}
+
+		if (evt.key.keysym.sym == SDLK_SPACE)
+		{
+			goToStart = true;
+		}
 	}
 	else if (evt.type == SDL_KEYUP)
 	{
@@ -205,20 +348,67 @@ void PlayMode::update(float elapsed)
 	background_fade -= std::floor(background_fade);
 
 	constexpr float PlayerSpeed = 30.0f;
+	glm::vec2 newPlayerPos = glm::vec2(player_at.x, player_at.y);
 	if (left.pressed)
-		player_at.x -= PlayerSpeed * elapsed;
+		newPlayerPos.x -= PlayerSpeed * elapsed;
 	if (right.pressed)
-		player_at.x += PlayerSpeed * elapsed;
+		newPlayerPos.x += PlayerSpeed * elapsed;
 	if (down.pressed)
-		player_at.y -= PlayerSpeed * elapsed;
+		newPlayerPos.y-= PlayerSpeed * elapsed;
 	if (up.pressed)
-		player_at.y += PlayerSpeed * elapsed;
+		newPlayerPos.y += PlayerSpeed * elapsed;
 
 	//reset button press counters:
 	left.downs = 0;
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
+
+	// Detect collide with stones
+	int32_t playerCenterIntPos_x = (newPlayerPos.x + 4.0f) / 8.0f;
+	int32_t playerCenterIntPos_y = (newPlayerPos.y + 4.0f) / 8.0f;
+
+	if (mazeCharMap[playerCenterIntPos_y][playerCenterIntPos_x] == 'i')
+	{
+		newPlayerPos.x = player_at.x;
+		newPlayerPos.y = player_at.y;
+	}
+	else if (mazeCharMap[playerCenterIntPos_y][playerCenterIntPos_x] == 't')
+	{
+		score++;
+		mazeCharMap[playerCenterIntPos_y][playerCenterIntPos_x] = 'o';
+	}
+
+	if (mazeCharMap[playerCenterIntPos_y][playerCenterIntPos_x] == 'x')
+	{
+		isDark = false;
+	}
+	else
+	{
+		isDark = true;
+	}
+
+	if (goToStart)
+	{
+		newPlayerPos.x = startPoint.first * 8.0f;
+		newPlayerPos.y = startPoint.second * 8.0f;
+		goToStart = false;
+	}
+
+	player_at =  newPlayerPos;
+
+	// glm::vec2 button_leftDownCorner = glm::vec2(startPoint.first * 8.0f, startPoint.second * 8.0f);
+	// glm::vec2 button_rightTopCorner = glm::vec2(startPoint.first * 8.0f + 8.0f, startPoint.second * 8.0f + 8.0f);
+	// if (player_at.x >= button_leftDownCorner.x && player_at.x <= button_rightTopCorner.x &&
+	// 	player_at.y >= button_leftDownCorner.y && player_at.y <= button_rightTopCorner.y)
+	// {
+	// 	isDark = false;
+	// }
+	// else
+	// {
+	// 	isDark = true;
+	// }
+
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size)
@@ -234,36 +424,93 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 
 	//tilemap gets recomputed every frame as some weird plasma thing:
 	//NOTE: don't do this in your game! actually make a map or something :-)
-	for (uint32_t y = 0; y < PPU466::BackgroundHeight; ++y)
+	// Set up background
+	for (uint32_t y = 0; y < 30; ++y)
 	{
-		for (uint32_t x = 0; x < PPU466::BackgroundWidth; ++x)
+		for (uint32_t x = 0; x < 32; ++x)
 		{
-			//TODO: make weird plasma thing
-			ppu.background[x + PPU466::BackgroundWidth * y] = ((x + y) % 16);
+			if (!isDark)
+			{
+				switch (mazeCharMap[y][x])
+				{
+					case 'o':
+						ppu.background[x + PPU466::BackgroundWidth * y] = 
+							ground_tile_index | ((ground_palette_index & 0x07) << 8);
+						break;
+					
+					case 'i':
+						ppu.background[x + PPU466::BackgroundWidth * y] = 
+							stone_tile_index | ((stone_palette_index & 0x07) << 8);
+						break;
+					
+					case 'x':
+						ppu.background[x + PPU466::BackgroundWidth * y] = 
+							button_tile_index | ((button_palette_index & 0x07) << 8);
+						break;
+					
+					case 't':
+						ppu.background[x + PPU466::BackgroundWidth * y] = 
+							target_tile_index | ((target_palette_index & 0x07) << 8);
+
+					default:
+						break;
+				}
+			}
+			else
+			{
+				switch (mazeCharMap[y][x])
+				{
+					case 't':
+						ppu.background[x + PPU466::BackgroundWidth * y] = 
+							target_tile_index | ((target_palette_index & 0x07) << 8);
+						break;
+				    
+					case 'x':
+						ppu.background[x + PPU466::BackgroundWidth * y] = 
+							button_tile_index | ((button_palette_index & 0x07) << 8);
+						break;
+					
+					default:
+						ppu.background[x + PPU466::BackgroundWidth * y] = 
+							dark_tile_index | ((dark_palette_index & 0x07) << 8);
+						break;
+				}
+			}
+			
 		}
 	}
 
 	//background scroll:
-	ppu.background_position.x = int32_t(-0.5f * player_at.x);
-	ppu.background_position.y = int32_t(-0.5f * player_at.y);
+	// ppu.background_position.x = int32_t(-0.5f * player_at.x);
+	// ppu.background_position.y = int32_t(-0.5f * player_at.y);
+
+	// //targets sprite:
+	// for (uint32_t i  = 0; i < targets.size(); i++)
+	// {
+	// 	uint32_t currentIdex = i + target_sprite_offset;
+	// 	ppu.sprites[currentIdex].x = targets[i].first * 8.0f;
+	// 	ppu.sprites[currentIdex].y = targets[i].second * 8.0f;
+	// 	ppu.sprites[currentIdex].index = target_tile_index;
+	// 	ppu.sprites[currentIdex].attributes = target_palette_index;
+	// }
 
 	//player sprite:
 	ppu.sprites[0].x = int32_t(player_at.x);
 	ppu.sprites[0].y = int32_t(player_at.y);
-	ppu.sprites[0].index = 32;
-	ppu.sprites[0].attributes = 7;
+	ppu.sprites[0].index = player_tile_index;
+	ppu.sprites[0].attributes = player_palette_index;
 
 	//some other misc sprites:
-	for (uint32_t i = 1; i < 63; ++i)
-	{
-		float amt = (i + 2.0f * background_fade) / 62.0f;
-		ppu.sprites[i].x = int32_t(0.5f * PPU466::ScreenWidth + std::cos(2.0f * M_PI * amt * 5.0f + 0.01f * player_at.x) * 0.4f * PPU466::ScreenWidth);
-		ppu.sprites[i].y = int32_t(0.5f * PPU466::ScreenHeight + std::sin(2.0f * M_PI * amt * 3.0f + 0.01f * player_at.y) * 0.4f * PPU466::ScreenWidth);
-		ppu.sprites[i].index = 32;
-		ppu.sprites[i].attributes = 6;
-		if (i % 2)
-			ppu.sprites[i].attributes |= 0x80; //'behind' bit
-	}
+	// for (uint32_t i = 1; i < 63; ++i)
+	// {
+	// 	float amt = (i + 2.0f * background_fade) / 62.0f;
+	// 	ppu.sprites[i].x = int32_t(0.5f * PPU466::ScreenWidth + std::cos(2.0f * M_PI * amt * 5.0f + 0.01f * player_at.x) * 0.4f * PPU466::ScreenWidth);
+	// 	ppu.sprites[i].y = int32_t(0.5f * PPU466::ScreenHeight + std::sin(2.0f * M_PI * amt * 3.0f + 0.01f * player_at.y) * 0.4f * PPU466::ScreenWidth);
+	// 	ppu.sprites[i].index = 32;
+	// 	ppu.sprites[i].attributes = 6;
+	// 	if (i % 2)
+	// 		ppu.sprites[i].attributes |= 0x80; //'behind' bit
+	// }
 
 	//--- actually draw ---
 	ppu.draw(drawable_size);
