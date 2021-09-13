@@ -24,7 +24,6 @@ PlayMode::PlayMode()
 	// Read map .txt
 	std::ifstream ifs;
 	char map[31][33] = {{0}};
-	//char buffer[256] = {0};
 
 	ifs.open("assets/mazeDesign.txt");
 	if (!ifs.is_open())
@@ -37,7 +36,7 @@ PlayMode::PlayMode()
 		while (!ifs.eof())
 		{
 			ifs.getline(map[i], sizeof(map[i]));
-			std::cout << map[i] << "\n";
+			// std::cout << map[i] << "\n";
 			i += 1;
 		}
 		ifs.close();
