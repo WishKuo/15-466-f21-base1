@@ -10,7 +10,7 @@ Screen Shot:
 
 How Your Asset Pipeline Works:
 
-Built from asset_generator.cpp. Read ast_list.txt to process .png files in the list. PNG files will be converted to .asset files. During gameplay, the game loads .asset files to process tiles and palette via PPU.
+Built from asset_generation.cpp. Read ast_list.txt to process .png files in the list. PNG files will be converted to .asset files. During gameplay, the game loads .asset files to process tiles and palette via PPU.
 
 How To Play:
 
