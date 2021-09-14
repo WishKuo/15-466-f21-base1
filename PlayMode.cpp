@@ -13,6 +13,25 @@
 #include <vector>
 #include <deque>
 
+#include <iostream>
+#include <fstream>
+
+#include "load_save_png.hpp"
+#include "read_write_chunk.hpp"
+#include "data_path.hpp"
+#include "Load.hpp"
+
+
+std::ifstream tile_stream;
+std::ifstream palette_stream;
+
+Load<void> ps(LoadTagDefault, [](){
+	tile_stream.open(data_path("../tiles.assets"));
+	palettle_stream.open(data_path("../palette.assets"));
+	return;
+});
+
+
 PlayMode::PlayMode()
 {
 	//TODO:
@@ -23,6 +42,63 @@ PlayMode::PlayMode()
 	//   and check that script into your repository.
 
 	//Also, *don't* use these tiles in your game:
+
+	//load tiles & palettes
+
+	std::vector<PPU466::Tile> tiles;
+	read_chunk(tile_stream, std::string("tile"), &tiles);
+
+	std::vector<PPU466::Palette> palettes;
+	read_chunk(palette_stream, std::string("pale"), &palettes);
+
+	palette_stream.close();
+	tile_stream.close();
+
+
+	{ //use tiles 0-16 as some weird dot pattern thing:
+		std::array< uint8_t, 8*8 > distance;
+		for (uint32_t y = 0; y < 8; ++y) {
+			for (uint32_t x = 0; x < 8; ++x) {
+				float d = glm::length(glm::vec2((x + 0.5f) - 4.0f, (y + 0.5f) - 4.0f));
+				d /= glm::length(glm::vec2(4.0f, 4.0f));
+				distance[x+8*y] = std::max(0,std::min(255,int32_t( 255.0f * d )));
+			}
+		}
+
+	for (int i=0; i < tiles.size(); i++) {
+		ppu.tile_table[32+i] = tiles[i];
+	}
+	for (int i=0; i < palettes.size(); i++) {
+		ppu.palette_table[i] = palettes[i];
+	}
+	// Button:	32,0
+	// Carrot:	34,2
+	// Ground:	36,4
+	// Rabbit:	38,6
+	// Stone:	40,8
+
+	
+
+	// 	for (uint32_t index = 0; index < 16; ++index) {
+	// 		PPU466::Tile tile;
+	// 		uint8_t t = (255 * index) / 16;
+	// 		for (uint32_t y = 0; y < 8; ++y) {
+	// 			uint8_t bit0 = 0;
+	// 			uint8_t bit1 = 0;
+	// 			for (uint32_t x = 0; x < 8; ++x) {
+	// 				uint8_t d = distance[x+8*y];
+	// 				if (d > t) {
+	// 					bit0 |= (1 << x);
+	// 				} else {
+	// 					bit1 |= (1 << x);
+	// 				}
+	// 			}
+	// 			tile.bit0[y] = bit0;
+	// 			tile.bit1[y] = bit1;
+	// 		}
+	// 		ppu.tile_table[index] = tile;
+	// 	}
+	}
 
 	// Read map .txt
 	std::ifstream ifs;
