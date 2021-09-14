@@ -30,18 +30,18 @@ struct PlayMode : Mode
 	std::pair<uint8_t, uint8_t> startPoint;
 
 	//PPU466 Index
-	uint8_t ground_tile_index = 36;
-	uint8_t ground_palette_index = 5;
-	uint8_t stone_tile_index = 40;
-	uint8_t stone_palette_index = 9;
-	uint8_t player_tile_index = 38;
-	uint8_t player_palette_index = 7;
-	uint8_t target_tile_index = 34;
-	uint8_t target_palette_index = 3;
+	uint8_t ground_tile_index = 34;
+	uint8_t ground_palette_index = 2;
+	uint8_t stone_tile_index = 36;
+	uint8_t stone_palette_index = 0; //It's supposed to be 4, we switch it becuase we thought the color is better fit.
+	uint8_t player_tile_index = 35;
+	uint8_t player_palette_index = 3;
+	uint8_t target_tile_index = 33;
+	uint8_t target_palette_index = 1;
 	uint8_t button_tile_index = 32;
-	uint8_t button_palette_index = 1;
+	uint8_t button_palette_index = 4; //It's supposed to be 0, we switch it becuase we thought the color is better fit.
 	uint8_t dark_tile_index = 5;
-	uint8_t dark_palette_index = 5;
+	uint8_t dark_palette_index = 2;
 
 	//----- game state -----
 
