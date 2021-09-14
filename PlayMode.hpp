@@ -30,18 +30,18 @@ struct PlayMode : Mode
 	std::pair<uint8_t, uint8_t> startPoint;
 
 	//PPU466 Index
-	uint8_t ground_tile_index = 0;
-	uint8_t ground_palette_index = 6;
-	uint8_t stone_tile_index = 1;
-	uint8_t stone_palette_index = 7;
-	uint8_t player_tile_index = 2;
+	uint8_t ground_tile_index = 36;
+	uint8_t ground_palette_index = 5;
+	uint8_t stone_tile_index = 40;
+	uint8_t stone_palette_index = 9;
+	uint8_t player_tile_index = 38;
 	uint8_t player_palette_index = 7;
-	uint8_t target_tile_index = 3;
-	uint8_t target_palette_index = 7;
-	uint8_t button_tile_index = 4;
-	uint8_t button_palette_index = 7;
+	uint8_t target_tile_index = 34;
+	uint8_t target_palette_index = 3;
+	uint8_t button_tile_index = 32;
+	uint8_t button_palette_index = 1;
 	uint8_t dark_tile_index = 5;
-	uint8_t dark_palette_index = 0;
+	uint8_t dark_palette_index = 5;
 
 	//----- game state -----
 
@@ -55,6 +55,7 @@ struct PlayMode : Mode
 	bool isDark = false;
 	bool goToStart = false;
 	uint8_t score = 0;
+	float currentTimer = 0.0f;
 
 	//some weird background animation:
 	float background_fade = 0.0f;
