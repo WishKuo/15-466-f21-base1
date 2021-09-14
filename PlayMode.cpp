@@ -9,6 +9,9 @@
 #include <random>
 #include <iostream>
 #include <fstream>
+#include <chrono>
+#include <vector>
+#include <deque>
 
 PlayMode::PlayMode()
 {
@@ -46,18 +49,18 @@ PlayMode::PlayMode()
 		{
 			switch (mazeCharMap[y][x])
 			{
-				case 'o':
-					grounds.push_back(std::pair<uint8_t, uint8_t>(x, y));
-					break;
-				case 'i':
-					stones.push_back(std::pair<uint8_t, uint8_t>(x, y));
-					break;
-				case 't':
-					targets.push_back(std::pair<uint8_t, uint8_t>(x, y));
-					break;
-				default :
-				    startPoint = std::pair<uint8_t, uint8_t>(x, y);
-					break;
+			case 'o':
+				grounds.push_back(std::pair<uint8_t, uint8_t>(x, y));
+				break;
+			case 'i':
+				stones.push_back(std::pair<uint8_t, uint8_t>(x, y));
+				break;
+			case 't':
+				targets.push_back(std::pair<uint8_t, uint8_t>(x, y));
+				break;
+			default:
+				startPoint = std::pair<uint8_t, uint8_t>(x, y);
+				break;
 			}
 		}
 	}
@@ -65,7 +68,6 @@ PlayMode::PlayMode()
 	// Set up player start point
 	player_at.x = startPoint.first * 8.0f;
 	player_at.y = startPoint.second * 8.0f;
-
 
 	{ //use tiles 0-16 as some weird dot pattern thing:
 		std::array<uint8_t, 8 * 8> distance;
@@ -237,8 +239,28 @@ PlayMode::PlayMode()
 		0b00000000,
 	};
 
+	// use as the timer
+	ppu.tile_table[6].bit0 = {
+		0b11111111,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b11111111,
+	};
 
-
+	ppu.tile_table[6].bit1 = {
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+		0b00000000,
+	};
 
 	//makes the outside of tiles 0-16 solid:
 	ppu.palette_table[0] = {
@@ -271,6 +293,8 @@ PlayMode::PlayMode()
 		glm::u8vec4(0x00, 0x00, 0x00, 0xff),
 		glm::u8vec4(0x00, 0x00, 0x00, 0x00),
 	};
+
+	start_time = std::chrono::high_resolution_clock::now();
 }
 
 PlayMode::~PlayMode()
@@ -341,7 +365,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 void PlayMode::update(float elapsed)
 {
-
+	if (isGameOver)
+		return;
 	//slowly rotates through [0,1):
 	// (will be used to set background color)
 	background_fade += elapsed / 10.0f;
@@ -354,7 +379,7 @@ void PlayMode::update(float elapsed)
 	if (right.pressed)
 		newPlayerPos.x += PlayerSpeed * elapsed;
 	if (down.pressed)
-		newPlayerPos.y-= PlayerSpeed * elapsed;
+		newPlayerPos.y -= PlayerSpeed * elapsed;
 	if (up.pressed)
 		newPlayerPos.y += PlayerSpeed * elapsed;
 
@@ -395,7 +420,7 @@ void PlayMode::update(float elapsed)
 		goToStart = false;
 	}
 
-	player_at =  newPlayerPos;
+	player_at = newPlayerPos;
 
 	// glm::vec2 button_leftDownCorner = glm::vec2(startPoint.first * 8.0f, startPoint.second * 8.0f);
 	// glm::vec2 button_rightTopCorner = glm::vec2(startPoint.first * 8.0f + 8.0f, startPoint.second * 8.0f + 8.0f);
@@ -408,7 +433,6 @@ void PlayMode::update(float elapsed)
 	// {
 	// 	isDark = true;
 	// }
-
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size)
@@ -433,51 +457,67 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 			{
 				switch (mazeCharMap[y][x])
 				{
-					case 'o':
-						ppu.background[x + PPU466::BackgroundWidth * y] = 
-							ground_tile_index | ((ground_palette_index & 0x07) << 8);
-						break;
-					
-					case 'i':
-						ppu.background[x + PPU466::BackgroundWidth * y] = 
-							stone_tile_index | ((stone_palette_index & 0x07) << 8);
-						break;
-					
-					case 'x':
-						ppu.background[x + PPU466::BackgroundWidth * y] = 
-							button_tile_index | ((button_palette_index & 0x07) << 8);
-						break;
-					
-					case 't':
-						ppu.background[x + PPU466::BackgroundWidth * y] = 
-							target_tile_index | ((target_palette_index & 0x07) << 8);
+				case 'o':
+					ppu.background[x + PPU466::BackgroundWidth * y] =
+						ground_tile_index | ((ground_palette_index & 0x07) << 8);
+					break;
 
-					default:
-						break;
+				case 'i':
+					ppu.background[x + PPU466::BackgroundWidth * y] =
+						stone_tile_index | ((stone_palette_index & 0x07) << 8);
+					break;
+
+				case 'x':
+					ppu.background[x + PPU466::BackgroundWidth * y] =
+						button_tile_index | ((button_palette_index & 0x07) << 8);
+					break;
+
+				case 't':
+					ppu.background[x + PPU466::BackgroundWidth * y] =
+						target_tile_index | ((target_palette_index & 0x07) << 8);
+
+				default:
+					break;
 				}
 			}
 			else
 			{
 				switch (mazeCharMap[y][x])
 				{
-					case 't':
-						ppu.background[x + PPU466::BackgroundWidth * y] = 
-							target_tile_index | ((target_palette_index & 0x07) << 8);
-						break;
-				    
-					case 'x':
-						ppu.background[x + PPU466::BackgroundWidth * y] = 
-							button_tile_index | ((button_palette_index & 0x07) << 8);
-						break;
-					
-					default:
-						ppu.background[x + PPU466::BackgroundWidth * y] = 
-							dark_tile_index | ((dark_palette_index & 0x07) << 8);
-						break;
+				case 't':
+					ppu.background[x + PPU466::BackgroundWidth * y] =
+						target_tile_index | ((target_palette_index & 0x07) << 8);
+					break;
+
+				case 'x':
+					ppu.background[x + PPU466::BackgroundWidth * y] =
+						button_tile_index | ((button_palette_index & 0x07) << 8);
+					break;
+
+				default:
+					ppu.background[x + PPU466::BackgroundWidth * y] =
+						dark_tile_index | ((dark_palette_index & 0x07) << 8);
+					break;
 				}
 			}
-			
 		}
+	}
+
+	end_time = std::chrono::high_resolution_clock::now();
+	total_time = end_time - start_time;
+	int currentTimer = floor(total_time.count());
+	//std::cout << currentTimer << std::endl;
+
+	// 128 sec
+	if (currentTimer == 128)
+	{
+		isGameOver = true;
+	}
+
+	for (uint32_t x = 0; x < 32 - (currentTimer / 4.0); ++x)
+	{
+		ppu.background[x] =
+			button_tile_index | ((button_palette_index & 0x07) << 8);
 	}
 
 	//background scroll:
@@ -514,4 +554,25 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 
 	//--- actually draw ---
 	ppu.draw(drawable_size);
+
+	// draw timer
+	/*
+	std::vector<Vertex> vertices;
+	auto draw_rectangle = [&vertices](glm::vec2 const &center, glm::vec2 const &radius, glm::u8vec4 const &color)
+	{
+		//draw rectangle as two CCW-oriented triangles:
+		vertices.emplace_back(glm::vec3(center.x - radius.x, center.y - radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		vertices.emplace_back(glm::vec3(center.x + radius.x, center.y - radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		vertices.emplace_back(glm::vec3(center.x + radius.x, center.y + radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+
+		vertices.emplace_back(glm::vec3(center.x - radius.x, center.y - radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		vertices.emplace_back(glm::vec3(center.x + radius.x, center.y + radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		vertices.emplace_back(glm::vec3(center.x - radius.x, center.y + radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+	};
+#define HEX_TO_U8VEC4(HX) (glm::u8vec4((HX >> 24) & 0xff, (HX >> 16) & 0xff, (HX >> 8) & 0xff, (HX)&0xff))
+	const glm::u8vec4 timer_color = HEX_TO_U8VEC4(0xed7e7eff);
+#undef HEX_TO_U8VEC4
+
+	draw_rectangle(timer, timer_radius, timer_color);
+	*/
 }

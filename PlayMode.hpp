@@ -5,10 +5,16 @@
 
 #include <vector>
 #include <deque>
+#include <chrono>
 
-struct PlayMode : Mode {
+struct PlayMode : Mode
+{
 	PlayMode();
 	virtual ~PlayMode();
+
+	//timer state
+	glm::vec2 timer_radius = glm::vec2(7.0f, 0.2f);
+	glm::vec2 timer = glm::vec2(0.0f, 0.0f);
 
 	//functions called by main loop:
 	virtual bool handle_event(SDL_Event const &, glm::uvec2 const &window_size) override;
@@ -40,7 +46,8 @@ struct PlayMode : Mode {
 	//----- game state -----
 
 	//input tracking:
-	struct Button {
+	struct Button
+	{
 		uint8_t downs = 0;
 		uint8_t pressed = 0;
 	} left, right, down, up;
@@ -48,7 +55,6 @@ struct PlayMode : Mode {
 	bool isDark = false;
 	bool goToStart = false;
 	uint8_t score = 0;
-
 
 	//some weird background animation:
 	float background_fade = 0.0f;
@@ -59,4 +65,10 @@ struct PlayMode : Mode {
 	//----- drawing handled by PPU466 -----
 
 	PPU466 ppu;
+
+	// to draw timer
+	std::chrono::duration<double> total_time;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start_time, end_time;
+
+	bool isGameOver = false;
 };
