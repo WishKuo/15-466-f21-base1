@@ -23,13 +23,16 @@
 
 std::ifstream tile_stream;
 std::ifstream palette_stream;
+std::ifstream ifs;
 
 Load<void> ps(LoadTagDefault, []()
 			  {
 				  tile_stream.open(data_path("../tiles.asset"));
 				  palette_stream.open(data_path("../palettes.asset"));
+				  ifs.open(data_path("../mazeDesign.txt"));
 				  return;
 			  });
+
 
 PlayMode::PlayMode()
 {
@@ -76,8 +79,6 @@ PlayMode::PlayMode()
 	}
 
 	// Read map .txt
-	std::ifstream ifs;
-	ifs.open("assets/mazeDesign.txt");
 	if (!ifs.is_open())
 	{
 		std::cout << "Failed to open file.\n";
